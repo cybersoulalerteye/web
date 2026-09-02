@@ -132,13 +132,6 @@
     aspect-ratio:4/3.1;
     box-shadow:0 30px 70px -20px rgba(0,0,0,0.6);
   }
-    .brand-logo {
-  width: 32px;
-  height: 32px;
-  object-fit: contain;
-  flex:none;
-  border-radius: 4px;
-}
   .hud-grid{
     position:absolute; inset:0;
     background-image:
@@ -464,10 +457,11 @@
 <body>
 
 <header>
-<a href="#top" class="brand">
-  <img src="logo.jpeg" alt="AlertEye Logo" class="brand-logo">
-  <span class="brand-text">CYBERSOUL <span>/ ALERTEYE</span></span>
-</a>
+  <div class="navbar">
+    <a href="#top" class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00E5C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="brand-text">CYBERSOUL <span>/ ALERTEYE</span></span>
+    </a>
     <nav class="links">
       <a href="#problem">Product</a>
       <a href="#how">How it works</a>
