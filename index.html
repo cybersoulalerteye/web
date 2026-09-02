@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AlertEye — AI-Powered Smart Surveillance & Threat Detection</title>
+<link rel="icon" href="logo.jpeg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,900;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy:#0D1B2A;
+    --navy-2:#13273F;
+    --navy-3: black;
+    --ice:#F4F7FB;
+    --ice-2:#E7ECF3;
+    --cyan:#00E5C7;
+    --cyan-dim:#0AA48F;
+    --muted:#8B96A5;
+    --muted-dark:#5B6572;
+    --ink:#101823;
+    --red:#FF4D5E;
+    --display:'Fraunces', serif;
+    --body:'Inter', -apple-system, sans-serif;
+    --mono:'JetBrains Mono', monospace;
+    --maxw:1180px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    font-family:var(--body);
+    background:var(--navy);
+    color:var(--ice);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    overflow-x:hidden;
+  }
+  img,svg{display:block; max-width:100%;}
+  a{color:inherit; text-decoration:none;}
+  ul{list-style:none;}
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 32px;}
+  section{position:relative;}
+  ::selection{background:var(--cyan); color:var(--navy);}
+
+  /* ---------- utility: eyebrow / tag chip (signature detection-tag motif) ---------- */
+  .tag{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--mono); font-size:11.5px; font-weight:600;
+    letter-spacing:0.12em; text-transform:uppercase;
+    color:var(--cyan);
+  }
+  .tag::before{ content:"["; opacity:0.6; }
+  .tag::after{ content:"]"; opacity:0.6; }
+  .tag.on-light{ color:var(--cyan-dim); }
+
+  /* corner-bracket "viewfinder" frame — recurring signature device */
+  .frame{ position:relative; }
+  .frame::before,.frame::after{
+    content:""; position:absolute; width:18px; height:18px;
+    border-color:var(--cyan); border-style:solid; opacity:0.85;
+    pointer-events:none;
+  }
+  .frame::before{ top:-1px; left:-1px; border-width:2px 0 0 2px; }
+  .frame::after{ bottom:-1px; right:-1px; border-width:0 2px 2px 0; }
+
+  /* ---------- nav ---------- */
+  header{
+    position:fixed; top:0; left:0; right:0; z-index:100;
+    background:rgba(13,27,42,0.72);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+    border-bottom:1px solid rgba(255,255,255,0.06);
+  }
+  .navbar{
+    max-width:var(--maxw); margin:0 auto; padding:16px 32px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .brand{ display:flex; align-items:center; gap:10px; }
+  .brand svg{ width:26px; height:26px; flex:none; }
+  .brand-text{ font-family:var(--mono); font-size:13px; font-weight:600; letter-spacing:0.15em; color:var(--ice); }
+  .brand-text span{ color:var(--muted); }
+  nav.links{ display:flex; align-items:center; gap:34px; }
+  nav.links a{
+    font-size:14px; color:var(--muted); transition:color 0.2s ease;
+  }
+  nav.links a:hover{ color:var(--ice); }
+  nav.links .mobile-cta{ display:none; }
+  @media (max-width:980px){ nav.links .mobile-cta{ display:inline-flex; width:fit-content; } }
+  .btn{
+    display:inline-flex; align-items:center; gap:8px;
+    font-family:var(--body); font-weight:600; font-size:14px;
+    padding:11px 20px; border-radius:3px;
+    cursor:pointer; border:1px solid transparent;
+    transition:transform 0.15s ease, background 0.2s ease, border-color .2s ease, color .2s ease;
+  }
+  .btn:active{ transform:scale(0.97); }
+  .btn-primary{ background:var(--cyan); color:var(--navy); }
+  .btn-primary:hover{ background:#3CF0D6; }
+  .btn-ghost{ border-color:rgba(255,255,255,0.18); color:var(--ice); }
+  .btn-ghost:hover{ border-color:var(--cyan); color:var(--cyan); }
+  .btn-ghost.on-light{ border-color:rgba(16,24,35,0.2); color:var(--ink); }
+  .btn-ghost.on-light:hover{ border-color:var(--cyan-dim); color:var(--cyan-dim); }
+  .menu-toggle{ display:none; background:none; border:none; color:var(--ice); font-size:22px; cursor:pointer; }
+
+  /* ---------- hero ---------- */
+  .hero{
+    padding:168px 0 96px;
+    background:
+      radial-gradient(720px 420px at 88% -6%, rgba(0,229,199,0.12), transparent 60%),
+      radial-gradient(900px 600px at 10% 110%, rgba(0,229,199,0.06), transparent 55%),
+      var(--navy);
+  }
+  .hero .wrap{ display:grid; grid-template-columns:1.05fr 0.95fr; gap:56px; align-items:center; }
+  .hero-eyebrow{ margin-bottom:22px; }
+  h1.headline{
+    font-family:var(--display); font-weight:600; font-size:clamp(38px,4.6vw,60px);
+    line-height:1.06; letter-spacing:-0.01em; color:var(--ice);
+  }
+  h1.headline em{ font-style:italic; font-weight:500; color:var(--cyan); }
+  .hero p.sub{
+    margin-top:22px; font-size:17px; color:var(--muted); max-width:480px; line-height:1.6;
+  }
+  .hero-ctas{ margin-top:34px; display:flex; gap:14px; flex-wrap:wrap; }
+  .hero-note{ margin-top:28px; font-family:var(--mono); font-size:11.5px; color:var(--muted); letter-spacing:0.04em; }
+  .hero-note b{ color:var(--ice); font-weight:600; }
+
+  /* ---- HUD camera panel (signature hero visual) ---- */
+  .hud{
+    position:relative; border-radius:6px; overflow:hidden;
+    background:radial-gradient(120% 100% at 25% 15%, #112538, #071120 65%);
+    border:1px solid rgba(255,255,255,0.08);
+    aspect-ratio:4/3.1;
+    box-shadow:0 30px 70px -20px rgba(0,0,0,0.6);
+  }
+  .hud-grid{
+    position:absolute; inset:0;
+    background-image:
+      linear-gradient(rgba(0,229,199,0.055) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,199,0.055) 1px, transparent 1px);
+    background-size:38px 38px;
+    mask-image:radial-gradient(ellipse at center, black 55%, transparent 92%);
+  }
+  /* soft moving silhouettes to suggest a live feed rather than an empty room */
+  .silhouette{
+    position:absolute; border-radius:50% / 45%; filter:blur(18px);
+    background:radial-gradient(closest-side, rgba(255,255,255,0.10), rgba(255,255,255,0) 75%);
+    animation:drift 16s ease-in-out infinite;
+  }
+  .silhouette.s1{ width:150px; height:230px; top:32%; left:10%; animation-duration:19s; }
+  .silhouette.s2{ width:110px; height:190px; top:40%; left:58%; background:radial-gradient(closest-side, rgba(255,194,75,0.10), rgba(255,194,75,0) 75%); animation-duration:14s; animation-delay:-4s; }
+  .silhouette.s3{ width:90px; height:150px; top:22%; left:70%; animation-duration:22s; animation-delay:-9s; }
+  @keyframes drift{
+    0%{ transform:translate(0,0); }
+    50%{ transform:translate(18px,-10px); }
+    100%{ transform:translate(0,0); }
+  }
+  .hud-vignette{
+    position:absolute; inset:0; pointer-events:none;
+    background:radial-gradient(120% 100% at 50% 50%, transparent 55%, rgba(3,9,16,0.55) 100%);
+  }
+  .hud-noise{
+    position:absolute; inset:0; pointer-events:none; opacity:0.5; mix-blend-mode:overlay;
+    background-image:radial-gradient(rgba(255,255,255,0.5) 0.5px, transparent 0.5px);
+    background-size:3px 3px;
+  }
+  .hud-scan{
+    position:absolute; left:0; right:0; height:120px; z-index:2;
+    background:linear-gradient(180deg, rgba(0,229,199,0) 0%, rgba(0,229,199,0.14) 50%, rgba(0,229,199,0) 100%);
+    animation:scan 5s linear infinite;
+  }
+  @keyframes scan{ 0%{ top:-120px; } 100%{ top:100%; } }
+  .hud-top{ position:absolute; top:14px; left:16px; right:16px; z-index:3; display:flex; justify-content:space-between; align-items:center; }
+  .rec{ display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:#ff8a90; letter-spacing:0.08em; }
+  .rec i{ width:7px; height:7px; border-radius:50%; background:var(--red); display:block; animation:blink 1.4s ease-in-out infinite; }
+  @keyframes blink{ 0%,100%{opacity:1;} 50%{opacity:0.25;} }
+  .clock{ font-family:var(--mono); font-size:11px; color:var(--muted); letter-spacing:0.04em; }
+  .hud-bottom{ position:absolute; bottom:14px; left:16px; right:16px; z-index:3; display:flex; justify-content:space-between; align-items:flex-end; }
+  .cam-id{ font-family:var(--mono); font-size:10.5px; color:var(--muted); letter-spacing:0.08em; }
+  .ai-badge{ font-family:var(--mono); font-size:10.5px; color:var(--cyan); border:1px solid rgba(0,229,199,0.4); padding:4px 8px; border-radius:2px; background:rgba(0,229,199,0.06); transition:color .3s ease, border-color .3s ease, background .3s ease; }
+  .ai-badge.alert{ color:#FFC24B; border-color:rgba(255,194,75,0.55); background:rgba(255,194,75,0.1); }
+  .hud{ transition:box-shadow .4s ease; }
+  .hud.alert-state{ box-shadow:0 30px 70px -20px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,194,75,0.45); }
+
+  /* center reticle — occasional focus-lock pulse */
+  .reticle{
+    position:absolute; top:50%; left:50%; width:34px; height:34px; z-index:2;
+    transform:translate(-50%,-50%); opacity:0; animation:reticlePulse 8s ease-in-out infinite;
+  }
+  .reticle::before, .reticle::after{ content:""; position:absolute; background:rgba(0,229,199,0.55); }
+  .reticle::before{ top:50%; left:0; right:0; height:1px; }
+  .reticle::after{ left:50%; top:0; bottom:0; width:1px; }
+  @keyframes reticlePulse{
+    0%,92%,100%{ opacity:0; transform:translate(-50%,-50%) scale(1.15); }
+    94%{ opacity:0.9; transform:translate(-50%,-50%) scale(1); }
+    98%{ opacity:0; transform:translate(-50%,-50%) scale(0.9); }
+  }
+
+  /* mini radar, bottom-left corner */
+  .radar{
+    position:absolute; bottom:44px; left:16px; z-index:3;
+    width:34px; height:34px; border-radius:50%;
+    border:1px solid rgba(0,229,199,0.3);
+    background:rgba(0,229,199,0.04);
+  }
+  .radar::before{
+    content:""; position:absolute; inset:0; border-radius:50%;
+    background:conic-gradient(from 0deg, rgba(0,229,199,0.55), transparent 30%);
+    animation:radarSpin 3s linear infinite;
+  }
+  .radar::after{ content:""; position:absolute; inset:9px; border-radius:50%; border:1px solid rgba(0,229,199,0.25); }
+  @keyframes radarSpin{ to{ transform:rotate(360deg); } }
+
+  /* event log ticker, bottom strip */
+  .hud-log{
+    position:absolute; left:16px; right:16px; bottom:74px; z-index:3;
+    font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:0.03em;
+    opacity:0.85; height:14px; overflow:hidden;
+  }
+  .hud-log span{ display:block; animation:logFade 2.6s ease-in-out infinite; }
+  @keyframes logFade{
+    0%{ opacity:0; transform:translateY(4px); }
+    12%{ opacity:1; transform:translateY(0); }
+    85%{ opacity:1; }
+    100%{ opacity:0; transform:translateY(-4px); }
+  }
+
+  /* detection markers — 4-corner viewfinder brackets plus tracking id */
+  .det{
+    position:absolute; opacity:0; animation:detIn 6s ease-in-out infinite; z-index:2;
+    color:var(--cyan);
+    background-image:
+      linear-gradient(currentColor,currentColor), linear-gradient(currentColor,currentColor),
+      linear-gradient(currentColor,currentColor), linear-gradient(currentColor,currentColor),
+      linear-gradient(currentColor,currentColor), linear-gradient(currentColor,currentColor),
+      linear-gradient(currentColor,currentColor), linear-gradient(currentColor,currentColor);
+    background-repeat:no-repeat;
+    background-size:2px 13px, 13px 2px, 2px 13px, 13px 2px, 2px 13px, 13px 2px, 2px 13px, 13px 2px;
+    background-position:0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+  }
+  .det .lbl{
+    position:absolute; top:-19px; left:-1px; background:var(--cyan); color:var(--navy);
+    font-family:var(--mono); font-size:9px; font-weight:700; padding:2px 5px; white-space:nowrap; border-radius:2px;
+  }
+  .det .tid{
+    position:absolute; bottom:-17px; right:-1px; color:var(--cyan);
+    font-family:var(--mono); font-size:8.5px; letter-spacing:0.04em; opacity:0.8; white-space:nowrap;
+  }
+  .det.amber{ color:#FFC24B; }
+  .det.amber .lbl{ background:#FFC24B; }
+  .det.amber .tid{ color:#FFC24B; }
+  .det.d1{ top:30%; left:12%; width:20%; height:38%; animation-delay:0.2s; }
+  .det.d2{ top:42%; left:55%; width:15%; height:27%; animation-delay:2.3s; }
+  .det.d3{ top:20%; left:68%; width:13%; height:21%; animation-delay:4.4s; }
+  .det.d4{ top:48%; left:22%; width:11%; height:19%; animation-delay:6.6s; }
+  @keyframes detIn{
+    0%{ opacity:0; transform:scale(1.04) translate(0,0); }
+    6%{ opacity:1; transform:scale(1) translate(0,0); }
+    24%{ transform:scale(1) translate(2px,-1px); }
+    32%{ opacity:1; transform:scale(1) translate(0,0); }
+    40%{ opacity:0; }
+    100%{ opacity:0; }
+  }
+
+  /* ---------- section heads ---------- */
+  .section-pad{ padding:112px 0; }
+  .head-block{ max-width:640px; margin-bottom:64px; }
+  .head-block h2{
+    font-family:var(--display); font-weight:600; font-size:clamp(28px,3.2vw,40px);
+    line-height:1.14; margin-top:16px; letter-spacing:-0.01em;
+  }
+  .on-dark h2{ color:var(--ice); }
+  .on-light h2{ color:var(--ink); }
+  .head-block p{ margin-top:16px; font-size:15.5px; color:var(--muted); max-width:520px; }
+  .on-light .head-block p{ color:var(--muted-dark); }
+
+  /* ---------- problem (light) ---------- */
+  .problem{ background:var(--ice); color:var(--ink); }
+  .card-grid-3{ display:grid; grid-template-columns:repeat(3,1fr); gap:22px; }
+  .p-card{
+    background:#fff; border:1px solid #E3E8EF; border-radius:8px; padding:30px 26px;
+  }
+  .p-card .num{ font-family:var(--mono); font-size:12px; color:var(--cyan-dim); letter-spacing:0.08em; }
+  .p-card h3{ font-family:var(--display); font-size:19px; font-weight:600; margin:14px 0 10px; color:var(--ink); }
+  .p-card p{ font-size:14px; color:var(--muted-dark); line-height:1.6; }
+
+  /* ---------- solution (dark) ---------- */
+  .solution{ background:var(--navy); }
+  .sol-grid{ display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:start; }
+  .sol-row{ display:flex; gap:20px; padding:26px 0; border-top:1px solid rgba(255,255,255,0.08); }
+  .sol-row:last-child{ border-bottom:1px solid rgba(255,255,255,0.08); }
+  .sol-icon{
+    flex:none; width:46px; height:46px; border-radius:50%; background:rgba(0,229,199,0.1);
+    border:1px solid rgba(0,229,199,0.35); display:flex; align-items:center; justify-content:center;
+  }
+  .sol-icon svg{ width:22px; height:22px; stroke:var(--cyan); }
+  .sol-row h3{ font-family:var(--display); font-size:18px; font-weight:600; color:var(--ice); }
+  .sol-row p{ margin-top:6px; font-size:14px; color:var(--muted); line-height:1.6; }
+  .sol-visual{ position:relative; }
+  .quote-card{
+    border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:40px 34px;
+    background:linear-gradient(160deg, rgba(0,229,199,0.07), transparent 70%), var(--navy-2);
+  }
+  .quote-card p{
+    font-family:var(--display); font-style:italic; font-weight:500; font-size:24px;
+    line-height:1.4; color:var(--ice);
+  }
+  .quote-card .tag{ margin-top:24px; display:block; }
+
+  /* ---------- how it works (light) ---------- */
+  .flow{ background:var(--ice); color:var(--ink); }
+  .flow-track{ display:flex; align-items:flex-start; gap:0; overflow-x:auto; padding-bottom:8px; }
+  .flow-step{ flex:1 1 0; min-width:140px; text-align:center; position:relative; padding:0 10px; }
+  .flow-step .dot{
+    width:64px; height:64px; border-radius:50%; background:var(--navy); margin:0 auto 18px;
+    display:flex; align-items:center; justify-content:center; position:relative; z-index:2;
+    border:2px solid var(--navy);
+  }
+  .flow-step .dot svg{ width:28px; height:28px; stroke:var(--cyan); }
+  .flow-step .line{
+    position:absolute; top:32px; left:-50%; width:100%; height:2px; background:repeating-linear-gradient(90deg, #C7D0DB 0 6px, transparent 6px 12px); z-index:1;
+  }
+  .flow-step:first-child .line{ display:none; }
+  .flow-step h4{ font-family:var(--body); font-weight:700; font-size:13.5px; color:var(--ink); }
+  .flow-step .step-idx{ font-family:var(--mono); font-size:10.5px; color:var(--cyan-dim); letter-spacing:0.08em; display:block; margin-bottom:6px; }
+  .flow-caption{ margin-top:48px; text-align:center; font-family:var(--display); font-style:italic; font-size:17px; color:var(--muted-dark); }
+
+  /* ---------- features (dark) ---------- */
+  .features{ background:var(--navy); }
+  .feat-grid{ display:grid; grid-template-columns:repeat(3,1fr); gap:1px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.08); border-radius:8px; overflow:hidden; }
+  .feat{ background:var(--navy); padding:32px 28px; min-height:190px; display:flex; flex-direction:column; gap:14px; transition:background .2s ease; }
+  .feat:hover{ background:var(--navy-2); }
+  .feat svg{ width:24px; height:24px; stroke:var(--cyan); }
+  .feat h3{ font-family:var(--display); font-size:17px; font-weight:600; color:var(--ice); }
+  .feat p{ font-size:13.5px; color:var(--muted); line-height:1.6; }
+
+  /* ---------- markets (light) ---------- */
+  .markets{ background:var(--ice); color:var(--ink); }
+  .market-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:16px; }
+  .m-card{
+    position:relative; background:var(--navy); border-radius:8px; padding:26px 18px 22px;
+    min-height:190px; display:flex; flex-direction:column; justify-content:flex-end; gap:10px;
+    overflow:hidden;
+  }
+  .m-card .m-tag{ font-family:var(--mono); font-size:10px; color:var(--cyan); letter-spacing:0.08em; opacity:0.85; }
+  .m-card h4{ font-family:var(--body); font-weight:700; font-size:14.5px; color:var(--ice); line-height:1.3; }
+  .m-card svg{ position:absolute; top:20px; left:18px; width:26px; height:26px; stroke:var(--cyan); opacity:0.9; }
+
+  /* ---------- advantage (dark, split) ---------- */
+  .advantage{ background:var(--navy); }
+  .adv-split{ display:grid; grid-template-columns:0.85fr 1.15fr; gap:64px; align-items:center; }
+  .adv-statement{ font-family:var(--display); font-weight:500; font-style:italic; font-size:clamp(24px,2.6vw,32px); line-height:1.35; color:var(--ice); }
+  .adv-statement .cyan{ color:var(--cyan); font-style:normal; font-weight:600; }
+  .adv-list{ display:flex; flex-direction:column; gap:0; }
+  .adv-item{ display:flex; gap:18px; padding:22px 0; border-top:1px solid rgba(255,255,255,0.08); }
+  .adv-item:last-child{ border-bottom:1px solid rgba(255,255,255,0.08); }
+  .adv-item svg{ flex:none; width:22px; height:22px; stroke:var(--cyan); margin-top:2px; }
+  .adv-item h4{ font-family:var(--body); font-weight:700; font-size:15px; color:var(--ice); }
+  .adv-item p{ margin-top:5px; font-size:13.5px; color:var(--muted); line-height:1.55; }
+
+  /* ---------- business model (light) ---------- */
+  .model{ background:var(--ice); color:var(--ink); }
+  .model-rows{ border-top:1px solid #DBE2EA; }
+  .m-row{ display:grid; grid-template-columns:280px 1fr 90px; align-items:center; gap:20px; padding:26px 4px; border-bottom:1px solid #DBE2EA; }
+  .m-row .idx{ font-family:var(--mono); font-size:12px; color:var(--cyan-dim); }
+  .m-row h4{ font-family:var(--display); font-size:18px; font-weight:600; color:var(--ink); }
+  .m-row p{ font-size:14px; color:var(--muted-dark); }
+  .m-row .type{ font-family:var(--mono); font-size:11px; color:var(--muted-dark); text-align:right; letter-spacing:0.04em; }
+
+  /* ---------- stage (dark) ---------- */
+  .stage{ background:var(--navy); }
+  .stage-strip{ display:flex; gap:16px; flex-wrap:wrap; align-items:stretch; }
+  .stage-chip{
+    flex:1 1 220px; border:1px solid rgba(255,255,255,0.1); border-radius:8px; padding:26px 24px;
+    background:var(--navy-2);
+  }
+  .stage-chip .dot-row{ display:flex; align-items:center; gap:8px; margin-bottom:14px; }
+  .stage-chip .dot-row i{ width:8px; height:8px; border-radius:50%; background:var(--cyan); display:block; }
+  .stage-chip .dot-row span{ font-family:var(--mono); font-size:11px; letter-spacing:0.08em; color:var(--cyan); text-transform:uppercase; }
+  .stage-chip h4{ font-family:var(--display); font-size:18px; font-weight:600; color:var(--ice); }
+  .stage-chip p{ margin-top:8px; font-size:13.5px; color:var(--muted); line-height:1.6; }
+
+  /* ---------- vision/founder (light split) ---------- */
+  .vision{ background:var(--ice); color:var(--ink); }
+  .vision-split{ display:grid; grid-template-columns:0.9fr 1.1fr; gap:0; border-radius:10px; overflow:hidden; border:1px solid #DBE2EA; }
+  .vision-left{ background:var(--navy); padding:56px 44px; display:flex; flex-direction:column; justify-content:center; gap:16px; }
+  .vision-left .avatar{
+    width:66px; height:66px; border-radius:50%; background:var(--navy-2); border:1px solid rgba(0,229,199,0.4);
+    display:flex; align-items:center; justify-content:center; font-family:var(--display); font-size:24px; color:var(--cyan); font-weight:600;
+  }
+  .vision-left h4{ font-family:var(--display); font-size:22px; font-weight:600; color:var(--ice); margin-top:8px; }
+  .vision-left span{ font-family:var(--mono); font-size:12px; color:var(--cyan); letter-spacing:0.04em; }
+  .vision-right{ background:#fff; padding:56px 48px; display:flex; flex-direction:column; justify-content:center; }
+  .vision-right p.big{ font-family:var(--display); font-size:26px; font-weight:600; line-height:1.35; color:var(--ink); }
+  .vision-right p.small{ margin-top:18px; font-size:15px; color:var(--muted-dark); line-height:1.7; max-width:520px; }
+
+  /* ---------- CTA / footer ---------- */
+  .cta{
+    background:linear-gradient(160deg, rgba(0,229,199,0.08), transparent 60%), var(--navy);
+    text-align:center; padding:120px 0 90px; border-top:1px solid rgba(255,255,255,0.06);
+  }
+  .cta h2{ font-family:var(--display); font-weight:600; font-size:clamp(30px,4vw,46px); color:var(--ice); max-width:680px; margin:18px auto 0; line-height:1.15; }
+  .cta p{ margin:18px auto 0; color:var(--muted); max-width:480px; font-size:15.5px; }
+  .cta .hero-ctas{ justify-content:center; margin-top:34px; }
+
+  footer{ background:var(--navy); border-top:1px solid rgba(255,255,255,0.08); padding:44px 0; }
+  .footer-row{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:18px; }
+  .footer-row .brand-text{ font-size:12px; }
+  .footer-links{ display:flex; gap:26px; }
+  .footer-links a{ font-size:13px; color:var(--muted); }
+  .footer-links a:hover{ color:var(--cyan); }
+  .footer-copy{ font-family:var(--mono); font-size:11px; color:var(--muted); }
+
+  /* ---------- reveal-on-scroll ---------- */
+  .reveal{ opacity:0; transform:translateY(18px); transition:opacity .7s ease, transform .7s ease; }
+  .reveal.in{ opacity:1; transform:translateY(0); }
+
+  @media (prefers-reduced-motion: reduce){
+    html{ scroll-behavior:auto; }
+    .hud-scan, .rec i, .det, .silhouette, .reticle, .radar::before, .hud-log span{ animation:none !important; }
+    .det{ opacity:1 !important; }
+    .hud-log span{ opacity:1 !important; }
+    .reveal{ opacity:1; transform:none; transition:none; }
+  }
+
+  /* ---------- responsive ---------- */
+  @media (max-width:980px){
+    nav.links{ display:none; }
+    .menu-toggle{ display:block; }
+    .hero .wrap{ grid-template-columns:1fr; }
+    .hud{ order:-1; }
+    .card-grid-3{ grid-template-columns:1fr; }
+    .sol-grid{ grid-template-columns:1fr; gap:40px; }
+    .feat-grid{ grid-template-columns:1fr 1fr; }
+    .market-grid{ grid-template-columns:repeat(2,1fr); }
+    .adv-split{ grid-template-columns:1fr; gap:36px; }
+    .m-row{ grid-template-columns:1fr; gap:8px; }
+    .m-row .type{ text-align:left; }
+    .vision-split{ grid-template-columns:1fr; }
+    .flow-track{ flex-wrap:wrap; }
+    .flow-step{ flex:1 1 30%; }
+  }
+  @media (max-width:560px){
+    .wrap{ padding:0 20px; }
+    .navbar{ padding:14px 20px; }
+    .navbar > a.btn-primary{ display:none; }
+    .section-pad{ padding:80px 0; }
+    .feat-grid{ grid-template-columns:1fr; }
+    .market-grid{ grid-template-columns:1fr 1fr; }
+    .flow-step{ flex:1 1 45%; margin-bottom:28px; }
+    .hero{ padding-top:120px; }
+    .hud-log, .radar{ display:none; }
+    .ai-badge{ font-size:9.5px; padding:3px 6px; }
+    .cam-id{ font-size:9.5px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="navbar">
+    <a href="#top" class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00E5C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="brand-text">CYBERSOUL <span>/ ALERTEYE</span></span>
+    </a>
+    <nav class="links">
+      <a href="#problem">Product</a>
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#markets">Markets</a>
+      <a href="#company">Company</a>
+<a href="https://forms.gle/XEaYXGJcuJ1sERuy9" 
+   class="btn btn-primary" 
+   target="_blank" 
+   rel="noopener noreferrer">
+  Request Early Access
+</a>    </nav>
+    <button class="menu-toggle" aria-label="Menu">☰</button>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <div class="tag hero-eyebrow">AI-Powered Smart Surveillance</div>
+        <h1 class="headline">CCTV watches.<br><em>AlertEye</em> warns.</h1>
+        <p class="sub">AlertEye analyzes your existing CCTV footage with AI, detects suspicious activity as it happens, and puts a real-time alert in front of a human — before a small incident becomes a big one.</p>
+        <div class="hero-ctas">
+          <a href="#contact" class="btn btn-primary">Request Early Access</a>
+          <a href="#how" class="btn btn-ghost">See how it works</a>
+        </div>
+        <div class="hero-note">Built by <b>CyberSoul</b> — currently in early-stage development.</div>
+      </div>
+
+      <div class="hud frame" aria-hidden="true">
+        <div class="hud-grid"></div>
+        <div class="silhouette s1"></div>
+        <div class="silhouette s2"></div>
+        <div class="silhouette s3"></div>
+        <div class="hud-vignette"></div>
+        <div class="hud-noise"></div>
+        <div class="hud-scan"></div>
+        <div class="reticle"></div>
+        <div class="hud-top">
+          <div class="rec"><i></i>REC</div>
+          <div class="clock" id="hud-clock">00:00:00</div>
+        </div>
+        <div class="det d1"><span class="lbl">PERSON · 98%</span><span class="tid">ID 0231</span></div>
+        <div class="det d2 amber"><span class="lbl">BAG · 91%</span><span class="tid">ID 0232</span></div>
+        <div class="det d3"><span class="lbl">PERSON · 96%</span><span class="tid">ID 0233</span></div>
+        <div class="det d4"><span class="lbl">PERSON · 89%</span><span class="tid">ID 0234</span></div>
+        <div class="radar"></div>
+        <div class="hud-log"><span id="hud-log-line">14:02:11 · Person entered Zone A</span></div>
+        <div class="hud-bottom">
+          <div class="cam-id">CAM_04 · NORTH ENTRANCE</div>
+          <div class="ai-badge" id="ai-badge">ALERTEYE AI · ANALYZING</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROBLEM -->
+  <section class="problem section-pad" id="problem">
+    <div class="wrap">
+      <div class="head-block on-light reveal">
+        <div class="tag on-light">The Problem</div>
+        <h2>Cameras record. They don't respond.</h2>
+        <p>Most CCTV systems are built to store footage, not to understand it — which means the moment that matters most can pass by unseen.</p>
+      </div>
+      <div class="card-grid-3">
+        <div class="p-card reveal">
+          <div class="num">01</div>
+          <h3>Passive by design</h3>
+          <p>CCTV mostly records footage. It doesn't think, flag, or interpret what's happening on screen — someone has to go looking for it.</p>
+        </div>
+        <div class="p-card reveal">
+          <div class="num">02</div>
+          <h3>No one is always watching</h3>
+          <p>Security teams can't monitor every feed, every second. Without help, incidents may not be noticed in real time.</p>
+        </div>
+        <div class="p-card reveal">
+          <div class="num">03</div>
+          <h3>Delay compounds damage</h3>
+          <p>Every minute between an incident and a response increases potential damage and risk — for people and property alike.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SOLUTION -->
+  <section class="solution section-pad" id="solution">
+    <div class="wrap sol-grid">
+      <div>
+        <div class="tag reveal">The Solution</div>
+        <h2 class="reveal" style="font-family:var(--display); font-weight:600; font-size:clamp(26px,3vw,34px); margin-top:16px; color:var(--ice);">AlertEye turns footage into foresight.</h2>
+
+        <div class="sol-row reveal">
+          <div class="sol-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A5.5 5.5 0 0 0 4 7.5v0A2.5 2.5 0 0 0 2 10v1a2.5 2.5 0 0 0 2 2.45V15a5 5 0 0 0 5 5"/><path d="M14.5 2A5.5 5.5 0 0 1 20 7.5v0a2.5 2.5 0 0 1 2 2.5v1a2.5 2.5 0 0 1-2 2.45V15a5 5 0 0 1-5 5"/><path d="M9.5 8.5v7M14.5 8.5v7"/></svg></div>
+          <div>
+            <h3>AI-analyzed footage</h3>
+            <p>AlertEye analyzes live CCTV footage continuously, using AI — not just after the fact, once it's too late to act.</p>
+          </div>
+        </div>
+        <div class="sol-row reveal">
+          <div class="sol-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+          <div>
+            <h3>Abnormal activity detection</h3>
+            <p>Suspicious or abnormal activity patterns are detected as they unfold, not discovered later in a recorded review.</p>
+          </div>
+        </div>
+        <div class="sol-row reveal">
+          <div class="sol-icon"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+          <div>
+            <h3>Real-time alerts</h3>
+            <p>Security personnel get a real-time alert the moment something needs attention — where they already work.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="sol-visual reveal">
+        <div class="quote-card">
+          <p>"From footage to response — in seconds, not minutes."</p>
+          <span class="tag">AlertEye Engine</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section class="flow section-pad" id="how">
+    <div class="wrap">
+      <div class="head-block on-light reveal">
+        <div class="tag on-light">How It Works</div>
+        <h2>From camera to confirmed response</h2>
+        <p>Six steps, one loop — AI does the constant watching, a person always makes the call.</p>
+      </div>
+
+      <div class="flow-track">
+        <div class="flow-step reveal">
+          <div class="line"></div>
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg></div>
+          <span class="step-idx">STEP 01</span>
+          <h4>CCTV</h4>
+        </div>
+        <div class="flow-step reveal">
+          <div class="line"></div>
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A5.5 5.5 0 0 0 4 7.5v0A2.5 2.5 0 0 0 2 10v1a2.5 2.5 0 0 0 2 2.45V15a5 5 0 0 0 5 5"/><path d="M14.5 2A5.5 5.5 0 0 1 20 7.5v0a2.5 2.5 0 0 1 2 2.5v1a2.5 2.5 0 0 1-2 2.45V15a5 5 0 0 1-5 5"/></svg></div>
+          <span class="step-idx">STEP 02</span>
+          <h4>AI Analysis</h4>
+        </div>
+        <div class="flow-step reveal">
+          <div class="line"></div>
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"/><path d="M12 9v4M12 17h.01"/></svg></div>
+          <span class="step-idx">STEP 03</span>
+          <h4>Threat Detection</h4>
+        </div>
+        <div class="flow-step reveal">
+          <div class="line"></div>
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg></div>
+          <span class="step-idx">STEP 04</span>
+          <h4>Security Alert</h4>
+        </div>
+        <div class="flow-step reveal">
+          <div class="line"></div>
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="m17 11 2 2 4-4"/></svg></div>
+          <span class="step-idx">STEP 05</span>
+          <h4>Human Verification</h4>
+        </div>
+        <div class="flow-step reveal">
+          <div class="line"></div>
+          <div class="dot"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/></svg></div>
+          <span class="step-idx">STEP 06</span>
+          <h4>Appropriate Response</h4>
+        </div>
+      </div>
+
+      <p class="flow-caption reveal">A human always verifies before escalation — AI assists, people decide.</p>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features section-pad" id="features">
+    <div class="wrap">
+      <div class="head-block on-dark reveal">
+        <div class="tag">Key Features</div>
+        <h2>Built for proactive security</h2>
+        <p>Everything AlertEye does is aimed at closing the gap between an incident and a response.</p>
+      </div>
+      <div class="feat-grid">
+        <div class="feat reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8Z"/></svg>
+          <h3>Real-Time Threat Detection</h3>
+          <p>Identifies threats as they happen, not after someone reviews the tape.</p>
+        </div>
+        <div class="feat reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          <h3>Abnormal Activity Detection</h3>
+          <p>Flags behavior patterns that deviate from the norm for a given site.</p>
+        </div>
+        <div class="feat reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <h3>Instant Security Alerts</h3>
+          <p>Notifies personnel immediately when action is needed — no delay.</p>
+        </div>
+        <div class="feat reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 8-6 4 6 4V8Z"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+          <h3>Incident Recording & Evidence</h3>
+          <p>Captures and preserves footage around every alert as usable evidence.</p>
+        </div>
+        <div class="feat reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.17a2 2 0 0 1-1.66 0L2 17.65M22 12.65l-9.17 4.17a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+          <h3>Scalable CCTV Integration</h3>
+          <p>Works with the camera infrastructure you already have, at any scale.</p>
+        </div>
+        <div class="feat reveal" style="justify-content:center; align-items:flex-start;">
+          <div class="tag" style="opacity:0.8;">And more soon</div>
+          <p>AlertEye's roadmap is shaped by early partners — <a href="#contact" style="color:var(--cyan); text-decoration:underline;">tell us what your team needs</a>.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MARKETS -->
+  <section class="markets section-pad" id="markets">
+    <div class="wrap">
+      <div class="head-block on-light reveal">
+        <div class="tag on-light">Target Market</div>
+        <h2>Anywhere cameras already watch</h2>
+        <p>AlertEye is designed to sit on top of the CCTV infrastructure these environments already run.</p>
+      </div>
+      <div class="market-grid">
+        <div class="m-card reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10 12 5 2 10l10 5 10-5Z"/><path d="M6 12v5c0 1 3 3 6 3s6-2 6-3v-5"/></svg>
+          <span class="m-tag">SITE TYPE</span>
+          <h4>Colleges & Universities</h4>
+        </div>
+        <div class="m-card reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+          <span class="m-tag">SITE TYPE</span>
+          <h4>Shopping Malls</h4>
+        </div>
+        <div class="m-card reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="1"/><path d="M9 22v-4h6v4M8 6h.01M12 6h.01M16 6h.01M8 10h.01M12 10h.01M16 10h.01M8 14h.01M12 14h.01M16 14h.01"/></svg>
+          <span class="m-tag">SITE TYPE</span>
+          <h4>Corporate Campuses</h4>
+        </div>
+        <div class="m-card reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="M9 22V12h6v10"/></svg>
+          <span class="m-tag">SITE TYPE</span>
+          <h4>Residential Communities</h4>
+        </div>
+        <div class="m-card reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18M5 21V9l7-6 7 6v12M9 21v-6h6v6"/></svg>
+          <span class="m-tag">SITE TYPE</span>
+          <h4>Public & Private Facilities</h4>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ADVANTAGE -->
+  <section class="advantage section-pad" id="advantage">
+    <div class="wrap adv-split">
+      <div class="reveal">
+        <div class="tag" style="margin-bottom:20px;">Competitive Advantage</div>
+        <p class="adv-statement">AlertEye doesn't replace your security team — it makes sure they <span class="cyan">never miss the moment</span> that matters.</p>
+      </div>
+      <div class="adv-list">
+        <div class="adv-item reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+          <div>
+            <h4>Proactive, not passive</h4>
+            <p>Moves beyond recording to active monitoring and detection.</p>
+          </div>
+        </div>
+        <div class="adv-item reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+          <div>
+            <h4>AI-assisted monitoring</h4>
+            <p>Software does the constant watching, so people don't have to.</p>
+          </div>
+        </div>
+        <div class="adv-item reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+          <div>
+            <h4>Human verification before escalation</h4>
+            <p>Every alert is checked by a person before any action is taken.</p>
+          </div>
+        </div>
+        <div class="adv-item reveal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m22 4-10 10-3-3"/></svg>
+          <div>
+            <h4>Built for existing infrastructure</h4>
+            <p>Designed to integrate with the CCTV systems already in place.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- BUSINESS MODEL -->
+  <section class="model section-pad" id="model">
+    <div class="wrap">
+      <div class="head-block on-light reveal">
+        <div class="tag on-light">Business Model</div>
+        <h2>Simple, recurring, scalable revenue</h2>
+      </div>
+      <div class="model-rows">
+        <div class="m-row reveal">
+          <div><span class="idx">01</span><h4 style="margin-top:6px;">SaaS Subscription</h4></div>
+          <p>Recurring software revenue tied to ongoing monitoring and alerts.</p>
+          <span class="type">RECURRING</span>
+        </div>
+        <div class="m-row reveal">
+          <div><span class="idx">02</span><h4 style="margin-top:6px;">Per-Camera / Per-Site Plans</h4></div>
+          <p>Pricing that scales predictably with deployment size.</p>
+          <span class="type">USAGE-BASED</span>
+        </div>
+        <div class="m-row reveal">
+          <div><span class="idx">03</span><h4 style="margin-top:6px;">Enterprise Deployments</h4></div>
+          <p>Custom agreements for large, multi-site organizations.</p>
+          <span class="type">CONTRACT</span>
+        </div>
+        <div class="m-row reveal">
+          <div><span class="idx">04</span><h4 style="margin-top:6px;">Installation & Integration</h4></div>
+          <p>Optional services revenue for onboarding and setup.</p>
+          <span class="type">SERVICES</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- STAGE -->
+  <section class="stage section-pad" id="company">
+    <div class="wrap">
+      <div class="head-block on-dark reveal">
+        <div class="tag">Current Stage</div>
+        <h2>Building in the open, honestly</h2>
+        <p>AlertEye is early — and we'd rather tell you exactly where things stand than oversell it.</p>
+      </div>
+      <div class="stage-strip">
+        <div class="stage-chip reveal">
+          <div class="dot-row"><i></i><span>Early-Stage</span></div>
+          <h4>Product under development</h4>
+          <p>Core AI detection engine and alerting flow are in active development.</p>
+        </div>
+        <div class="stage-chip reveal">
+          <div class="dot-row"><i></i><span>Validating</span></div>
+          <h4>Prototype / concept validation</h4>
+          <p>Working through the process end-to-end, from camera feed to verified alert.</p>
+        </div>
+        <div class="stage-chip reveal">
+          <div class="dot-row"><i></i><span>Pre-Revenue</span></div>
+          <h4>No customers yet — by design</h4>
+          <p>We're building toward first pilot deployments before opening billing.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- VISION / FOUNDER -->
+<!-- VISION / FOUNDER -->
+<section class="vision section-pad">
+  <div class="wrap">
+    <div class="vision-split reveal">
+
+      <div class="vision-left">
+
+        <div class="avatar">
+          <img src="Photo.jpeg" alt="Jayaraj S - Founder">
+        </div>
+
+        <h4>Jayaraj S</h4>
+        <span>FOUNDER, CYBERSOUL</span>
+
+      </div>
+
+      <div class="vision-right">
+
+        <div class="tag on-light" style="margin-bottom:14px;">
+          Vision
+        </div>
+
+        <p class="big">
+          Making security systems smarter, faster, and more proactive.
+        </p>
+
+        <p class="small">
+          AlertEye's mission is to make security systems smarter, faster,
+          and more proactive through responsible AI — augmenting human
+          judgment, never replacing it.
+        </p>
+
+      </div>
+
+    </div>
+  </div>
+</section>
+
+  <!-- CTA -->
+  <section class="cta" id="contact">
+    <div class="wrap">
+      <div class="tag" style="justify-content:center;">Get In Touch</div>
+      <h2>Let's put a second set of eyes on your cameras.</h2>
+      <p>We're an early-stage team looking for pilot sites and conversations with people who run security for campuses, malls, and facilities.</p>
+      <div class="hero-ctas">
+        <a href="mailto:jayaraj.s260807@gmail.com" class="btn btn-primary">Email the founder</a>
+        <a href="#top" class="btn btn-ghost">Back to top</a>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap footer-row">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#00E5C7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      <span class="brand-text">CYBERSOUL <span>/ ALERTEYE</span></span>
+    </div>
+    <div class="footer-links">
+      <a href="#problem">Product</a>
+      <a href="#how">How it works</a>
+      <a href="#markets">Markets</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="footer-copy">© 2026 CyberSoul. AlertEye is in early development.</div>
+  </div>
+</footer>
+
+<script>
+  // live HUD clock
+  function tick(){
+    const el = document.getElementById('hud-clock');
+    if(!el) return;
+    const d = new Date();
+    const p = n => String(n).padStart(2,'0');
+    el.textContent = p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());
+  }
+  tick(); setInterval(tick, 1000);
+
+  // rotating HUD event log
+  const logLines = [
+    'Person entered Zone A',
+    'Tracking 3 objects · Entrance',
+    'Bag left unattended · 00:04',
+    'Person exited frame · Zone A',
+    'No anomaly detected',
+    'Motion confirmed · North Entrance'
+  ];
+  let logIdx = 0;
+  const logEl = document.getElementById('hud-log-line');
+  function rotateLog(){
+    if(!logEl) return;
+    const d = new Date();
+    const p = n => String(n).padStart(2,'0');
+    logIdx = (logIdx + 1) % logLines.length;
+    logEl.style.animation = 'none';
+    logEl.textContent = p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+' · '+logLines[logIdx];
+    void logEl.offsetWidth;
+    logEl.style.animation = '';
+  }
+  setInterval(rotateLog, 2600);
+
+  // sync the AI badge + frame glow to the amber "BAG" detection cycle (6s loop, appears ~2.3s in)
+  const hudEl = document.querySelector('.hud');
+  const badgeEl = document.getElementById('ai-badge');
+  function pulseAlert(){
+    if(!hudEl || !badgeEl) return;
+    setTimeout(()=>{
+      hudEl.classList.add('alert-state');
+      badgeEl.classList.add('alert');
+      badgeEl.textContent = 'ALERTEYE AI · THREAT FLAGGED';
+    }, 2300);
+    setTimeout(()=>{
+      hudEl.classList.remove('alert-state');
+      badgeEl.classList.remove('alert');
+      badgeEl.textContent = 'ALERTEYE AI · ANALYZING';
+    }, 4200);
+  }
+  pulseAlert();
+  setInterval(pulseAlert, 6000);
+
+  // scroll reveal
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+    });
+  }, { threshold: 0.12 });
+  document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
+
+  // mobile menu (simple toggle -> scrolls to nav links list shown as stacked)
+  const toggle = document.querySelector('.menu-toggle');
+  const links = document.querySelector('nav.links');
+  if(toggle){
+    toggle.addEventListener('click', ()=>{
+      const open = links.style.display === 'flex';
+      links.style.cssText = open ? '' : 'display:flex; flex-direction:column; position:fixed; top:64px; left:0; right:0; background:#0D1B2A; padding:24px 32px; gap:18px; border-bottom:1px solid rgba(255,255,255,0.08);';
+    });
+  }
+</script>
+
+</body>
+</html>
